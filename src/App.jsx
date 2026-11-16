@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react'
-import { api, excelUrl, getToken, setToken } from './api.js'
+import { api, excelUrl, getToken, setToken, FETCH_KEY, FETCH_URL, runAutoFetch } from './api.js'
 
 const inr = n => '₹' + Math.round(Number(n) || 0).toLocaleString('en-IN')
 const lbl = h => (h > 12 ? h - 12 : h) + ':00 ' + (h >= 12 ? 'PM' : 'AM')
@@ -33,8 +33,80 @@ function Login({ onIn }) {
     )
   }
 
+  // ================= auto fetch =================
+  function AutoFetch({ reload, toast }) {
+    const [day, setDay] = useState(today())
+    const [key, setKey] = useState(FETCH_KEY)
+    const [busy, setBusy] = useState(false)
+    const [log, setLog] = useState('')
+    const [err, setErr] = useState('')
+
+    const exec = async (isTest) => {
+      setBusy(true); setErr('')
+      setLog(`[${new Date().toLocaleTimeString()}] Fetching results for ${day} (${isTest ? 'TEST MODE - NO PAYOUT' : 'LIVE PUBLISH'})...\n`)
+      try {
+        const output = await runAutoFetch({ day, test: isTest, key })
+        setLog(prev => prev + '\n' + output)
+        if (!isTest) {
+          toast('Results published and tickets settled!')
+          reload()
+        } else {
+          toast('Test fetch completed.')
+        }
+      } catch (x) {
+        setErr(x.message)
+        setLog(prev => prev + '\n\n' + x.message)
+        toast(x.message, true)
+      }
+      setBusy(false)
+    }
+
+    const directTestUrl = `${FETCH_URL}?key=${encodeURIComponent(key)}&test=1&day=${encodeURIComponent(day)}`
+    const directLiveUrl = `${FETCH_URL}?key=${encodeURIComponent(key)}&day=${encodeURIComponent(day)}`
+
+    return (
+      <section className="card">
+        <div className="hd">
+          <h3>⚡ Auto-Fetch Winning Results</h3>
+          <div className="row-r">
+            <input type="date" className="in sm" value={day} max={today()} onChange={e => setDay(e.target.value)} />
+          </div>
+        </div>
+        <p className="note">
+          Scrapes winning numbers from official websites (Goa Queen, Dear, Kerala, Punjab, Sikkim), takes the <b>last 3 digits</b>, and automatically publishes & pays any unreleased draws.
+        </p>
+
+        <div className="fetch-ctrls">
+          <button type="button" className="btn ghost sm" disabled={busy} onClick={() => exec(true)}>
+            🧪 Test Fetch (Preview Only)
+          </button>
+          <button type="button" className="btn gold sm" disabled={busy} onClick={() => exec(false)}>
+            {busy ? 'Fetching & Publishing…' : '🚀 Fetch & Publish Live'}
+          </button>
+          <a className="btn ghost sm" href={directTestUrl} target="_blank" rel="noreferrer">
+            🔗 Open Test in Tab
+          </a>
+          <a className="btn ghost sm" href={directLiveUrl} target="_blank" rel="noreferrer">
+            🔗 Open Live in Tab
+          </a>
+        </div>
+
+        {log && (
+          <div className="fetch-log">
+            <div className="fetch-log-hd">
+              <span>Fetcher Output</span>
+              <button type="button" className="lnk" onClick={() => setLog('')}>Clear Output</button>
+            </div>
+            <pre>{log}</pre>
+          </div>
+        )}
+        {err && <small className="err" style={{ display: 'block', marginTop: 10 }}>{err}</small>}
+      </section>
+    )
+  }
+
   // ================= publish results =================
-  function Results({ lots, results, reload, toast }) {
+  function Results({ lots, results, reload, toast, onGoFetch }) {
     const slots = Object.entries(lots || {}).flatMap(([lot, hs]) => hs.map(h => ({ lot, h }))).sort((a, b) => a.h - b.h)
     const [day, setDay] = useState(today()), [pick, setPick] = useState(null), [digits, setDigits] = useState(''), [busy, setBusy] = useState(false)
     const done = (lot, h) => results.find(r => r.day === day && r.lot === lot && +r.h === h)
@@ -51,7 +123,13 @@ function Login({ onIn }) {
     return (
       <div className="grid2">
         <section className="card">
-          <div className="hd"><h3>Publish a result</h3><input type="date" className="in sm" value={day} max={today()} onChange={e => { setDay(e.target.value); setPick(null) }} /></div>
+          <div className="hd">
+            <h3>Publish a result</h3>
+            <div className="row-r">
+              <button type="button" className="btn gold sm" onClick={onGoFetch}>⚡ Auto Fetch</button>
+              <input type="date" className="in sm" value={day} max={today()} onChange={e => { setDay(e.target.value); setPick(null) }} />
+            </div>
+          </div>
           <div className="slots">
             {slots.map(s => {
               const r = done(s.lot, s.h)
@@ -160,7 +238,7 @@ function Login({ onIn }) {
     if (!role) return <Login onIn={r => { setRole(r); setTab(r === 'admin' ? 'results' : 'analytics') }} />
 
     const tabs = role === 'admin'
-      ? [['results', '🎯 Results'], ['recharges', '💳 Recharges', ov?.recharges.length], ['wins', '🏆 Big wins', ov?.big_wins.length], ['analytics', '📊 Analytics']]
+      ? [['results', '🎯 Results'], ['fetch', '⚡ Auto Fetch'], ['recharges', '💳 Recharges', ov?.recharges.length], ['wins', '🏆 Big wins', ov?.big_wins.length], ['analytics', '📊 Analytics']]
       : [['analytics', '📊 Analytics']]
     return (
       <div className="shell">
@@ -170,8 +248,9 @@ function Login({ onIn }) {
           <button className="btn ghost sm" onClick={out}>Log out</button>
         </header>
         <main>
-          {role === 'admin' && !ov && tab !== 'analytics' ? <div className="empty">Loading…</div>
-            : tab === 'results' ? <Results lots={ov.lots} results={ov.results} reload={reload} toast={toast} />
+          {role === 'admin' && !ov && tab !== 'analytics' && tab !== 'fetch' ? <div className="empty">Loading…</div>
+            : tab === 'results' ? <Results lots={ov.lots} results={ov.results} reload={reload} toast={toast} onGoFetch={() => setTab('fetch')} />
+            : tab === 'fetch' ? <AutoFetch reload={reload} toast={toast} />
               : tab === 'recharges' ? <Approvals title="UPI recharges to check" rows={ov.recharges} kind="r" reload={reload} toast={toast} />
                 : tab === 'wins' ? <Approvals title="Wins of ₹15,000 or more" rows={ov.big_wins} kind="w" reload={reload} toast={toast} />
                   : <Analytics toast={toast} />}

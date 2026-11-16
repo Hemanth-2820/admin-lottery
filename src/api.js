@@ -17,3 +17,22 @@ export async function api(action, data) {
   return j
 }
 export const excelUrl = month => URL + '?a=analytics_excel&month=' + month + '&token=' + encodeURIComponent(token)
+export const FETCH_URL = import.meta.env.VITE_FETCH_URL || URL.replace(/api\.php$/, 'fetch.php')
+export const FETCH_KEY = import.meta.env.VITE_FETCH_KEY || 'murugan-fetch-2026'
+
+export async function runAutoFetch({ day, test = false, key = FETCH_KEY } = {}) {
+  const q = new URLSearchParams()
+  if (key) q.set('key', key)
+  if (test) q.set('test', '1')
+  if (day) q.set('day', day)
+  const target = `${FETCH_URL}?${q.toString()}`
+
+  const r = await fetch(target).catch(err => {
+    throw new Error(
+      `Network / CORS error connecting to fetch.php: ${err.message}. If CORS blocks direct requests from the browser, add "header('Access-Control-Allow-Origin: *');" at the top of fetch.php, or click "Open in Tab".`
+    )
+  })
+  const text = await r.text()
+  if (!r.ok) throw new Error(text || `Fetch failed with status ${r.status}`)
+  return text
+}
