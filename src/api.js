@@ -1,6 +1,6 @@
 // Talks to the same PHP backend as the player app.
 // Set VITE_API_URL in Vercel (Settings > Environment Variables) to your backend, e.g. https://yourdomain/digitapi/api.php
-const URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api.php'
+const URL = import.meta.env.VITE_API_URL || 'https://api.fashionsnap.in/digitapi/api.php'
 let token = (() => { try { return localStorage.getItem('l3admin') || '' } catch { return '' } })()
 export const setToken = t => { token = t || ''; try { t ? localStorage.setItem('l3admin', t) : localStorage.removeItem('l3admin') } catch { /* private mode */ } }
 export const getToken = () => token
