@@ -1,9 +1,10 @@
+
 import React, { useCallback, useEffect, useState } from 'react'
-import { api, excelUrl, getToken, setToken, FETCH_KEY, FETCH_URL, runAutoFetch } from './api.js'
+import { api, excelUrl, getToken, setToken } from './api.js'
 
 const inr = n => '₹' + Math.round(Number(n) || 0).toLocaleString('en-IN')
 const lbl = h => (h > 12 ? h - 12 : h) + ':00 ' + (h >= 12 ? 'PM' : 'AM')
-const today = () => new Date(Date.now() + (new Date().getTimezoneOffset() + 330) * 60000).toISOString().slice(0, 10)
+const today = () => new Date(Date.now() + 330 * 60000).toISOString().slice(0, 10)
 const month = () => today().slice(0, 7)
 const COL = { Dear: '#ff3d6a', Kerala: '#19d48a', Punjab: '#ff9a1f', Sikkim: '#3d8bff', 'Goa Queen': '#d24dff' }
 const Brand = () => <div className="brand"><span>M</span>Murugan <em>Admin</em></div>
@@ -33,134 +34,99 @@ function Login({ onIn }) {
     )
   }
 
-  // ================= auto fetch =================
-  function AutoFetch({ reload, toast }) {
-    const [day, setDay] = useState(today())
-    const [key, setKey] = useState(FETCH_KEY)
-    const [busy, setBusy] = useState(false)
-    const [log, setLog] = useState('')
-    const [err, setErr] = useState('')
+const ago = t => { if (!t) return 'never'; const m = Math.round((Date.now() - new Date(t.replace(' ', 'T') + '+05:30')) / 60000); return m < 1 ? 'just now' : m < 60 ? m + ' min ago' : Math.floor(m / 60) + ' h ago' }
+const SITE = { 'www.goaqueen.in': 'goaqueen.in', 'dearlottery.in': 'dearlottery.in', 'www.goodreturns.in': 'goodreturns.in' }
 
-    const exec = async (isTest) => {
-      setBusy(true); setErr('')
-      setLog(`[${new Date().toLocaleTimeString()}] Fetching results for ${day} (${isTest ? 'TEST MODE - NO PAYOUT' : 'LIVE PUBLISH'})...\n`)
-      try {
-        const output = await runAutoFetch({ day, test: isTest, key })
-        setLog(prev => prev + '\n' + output)
-        if (!isTest) {
-          toast('Results published and tickets settled!')
-          reload()
-        } else {
-          toast('Test fetch completed.')
-        }
-      } catch (x) {
-        setErr(x.message)
-        setLog(prev => prev + '\n\n' + x.message)
-        toast(x.message, true)
-      }
-      setBusy(false)
-    }
-
-    const directTestUrl = `${FETCH_URL}?key=${encodeURIComponent(key)}&test=1&day=${encodeURIComponent(day)}`
-    const directLiveUrl = `${FETCH_URL}?key=${encodeURIComponent(key)}&day=${encodeURIComponent(day)}`
-
-    return (
-      <section className="card">
-        <div className="hd">
-          <h3>⚡ Auto-Fetch Winning Results</h3>
-          <div className="row-r">
-            <input type="date" className="in sm" value={day} max={today()} onChange={e => setDay(e.target.value)} />
-          </div>
-        </div>
-        <p className="note">
-          Scrapes winning numbers from official websites (Goa Queen, Dear, Kerala, Punjab, Sikkim), takes the <b>last 3 digits</b>, and automatically publishes & pays any unreleased draws.
-        </p>
-
-        <div className="fetch-ctrls">
-          <button type="button" className="btn ghost sm" disabled={busy} onClick={() => exec(true)}>
-            🧪 Test Fetch (Preview Only)
-          </button>
-          <button type="button" className="btn gold sm" disabled={busy} onClick={() => exec(false)}>
-            {busy ? 'Fetching & Publishing…' : '🚀 Fetch & Publish Live'}
-          </button>
-          <a className="btn ghost sm" href={directTestUrl} target="_blank" rel="noreferrer">
-            🔗 Open Test in Tab
-          </a>
-          <a className="btn ghost sm" href={directLiveUrl} target="_blank" rel="noreferrer">
-            🔗 Open Live in Tab
-          </a>
-        </div>
-
-        {log && (
-          <div className="fetch-log">
-            <div className="fetch-log-hd">
-              <span>Fetcher Output</span>
-              <button type="button" className="lnk" onClick={() => setLog('')}>Clear Output</button>
-            </div>
-            <pre>{log}</pre>
-          </div>
-        )}
-        {err && <small className="err" style={{ display: 'block', marginTop: 10 }}>{err}</small>}
-      </section>
-    )
+function AutoBar({ auto, reload, toast }) {
+  const [busy, setBusy] = useState(false), [rows, setRows] = useState(null)
+  const now = async () => {
+    setBusy(true)
+    try {
+      const r = await api('admin_fetch'); setRows(r.rows)
+      const n = r.rows.filter(x => x.state === 'new').length
+      toast(n ? `${n} new result${n > 1 ? 's' : ''} published from the websites` : 'Checked all websites. Nothing new yet.'); reload()
+    } catch (x) { toast(x.message, true) }
+    setBusy(false)
   }
+  const list = rows || auto?.rows || []
+  const stale = auto?.at && (Date.now() - new Date(auto.at.replace(' ', 'T') + '+05:30')) > 15 * 60000
+  return (
+    <section className="card auto">
+      <div className="au-top">
+        <div className={'au-live' + (stale || !auto ? ' off' : '')}><i /><b>{stale || !auto ? 'Auto results: not running' : 'Auto results: ON'}</b></div>
+        <span className="au-meta">Checks the result websites every 5 min · last check <b>{ago(rows ? new Date(Date.now() + 330 * 60000).toISOString().slice(0, 19).replace('T', ' ') : auto?.at)}</b></span>
+        <button className="btn gold sm" disabled={busy} onClick={now}>{busy ? <><span className="spin" />Checking…</> : '⟳ Fetch now'}</button>
+      </div>
+      {(stale || !auto) && <p className="au-warn">The 5-minute Cron Job has not run recently. Check Cron Jobs in cPanel, or use Fetch now.</p>}
+      {list.length > 0 && <div className="au-list">
+        {list.map(r => (
+          <div key={r.lot + r.h} className={'au-row ' + r.state} style={{ '--c': COL[r.lot] }}>
+            <b>{r.lot} · {lbl(+r.h)}</b>
+            <span className="au-site">{SITE[r.site] || r.site}</span>
+            {r.full ? <span className="au-num"><s>{r.full}</s> → <em>{r.digits}</em></span> : <span className="au-num" />}
+            <span className="au-msg">{{ done: '✓ Published', new: '✓ Published now', found: 'Found', wait: 'Not drawn yet', miss: 'Waiting for website', err: '⚠ ' + r.msg }[r.state]}</span>
+          </div>
+        ))}
+      </div>}
+    </section>
+  )
+}
 
-  // ================= publish results =================
-  function Results({ lots, results, reload, toast, onGoFetch }) {
-    const slots = Object.entries(lots || {}).flatMap(([lot, hs]) => hs.map(h => ({ lot, h }))).sort((a, b) => a.h - b.h)
-    const [day, setDay] = useState(today()), [pick, setPick] = useState(null), [digits, setDigits] = useState(''), [busy, setBusy] = useState(false)
-    const done = (lot, h) => results.find(r => r.day === day && r.lot === lot && +r.h === h)
-    const publish = async () => {
-      if (!pick || digits.length !== 3) return
-      setBusy(true)
-      try {
-        const r = await api('admin_publish', { day, lot: pick.lot, h: pick.h, digits })
-        toast(`Published ${pick.lot} ${lbl(pick.h)}: ${digits}. ${r.tickets} tickets, ${inr(r.paid)} paid` + (r.held_for_approval ? `, ${inr(r.held_for_approval)} waiting for approval` : ''))
-        setPick(null); setDigits(''); reload()
-      } catch (x) { toast(x.message, true) }
-      setBusy(false)
-    }
-    return (
+function Results({ lots, results, auto, reload, toast }) {
+  const slots = Object.entries(lots || {}).flatMap(([lot, hs]) => hs.map(h => ({ lot, h }))).sort((a, b) => a.h - b.h)
+  const [day, setDay] = useState(today()), [pick, setPick] = useState(null), [digits, setDigits] = useState(''), [busy, setBusy] = useState(false)
+  const done = (lot, h) => results.find(r => r.day === day && r.lot === lot && +r.h === h)
+  const nowH = +new Date(Date.now() + 330 * 60000).toISOString().slice(11, 13)
+  const publish = async () => {
+    if (!pick || digits.length !== 3) return
+    setBusy(true)
+    try {
+      const r = await api('admin_publish', { day, lot: pick.lot, h: pick.h, digits })
+      toast(`Published ${pick.lot} ${lbl(pick.h)}: ${digits}. ${r.tickets} tickets, ${inr(r.paid)} paid` + (r.held_for_approval ? `, ${inr(r.held_for_approval)} waiting for approval` : ''))
+      setPick(null); setDigits(''); reload()
+    } catch (x) { toast(x.message, true) }
+    setBusy(false)
+  }
+  return (
+    <>
+      <AutoBar auto={auto} reload={reload} toast={toast} />
       <div className="grid2">
         <section className="card">
-          <div className="hd">
-            <h3>Publish a result</h3>
-            <div className="row-r">
-              <button type="button" className="btn gold sm" onClick={onGoFetch}>⚡ Auto Fetch</button>
-              <input type="date" className="in sm" value={day} max={today()} onChange={e => { setDay(e.target.value); setPick(null) }} />
-            </div>
-          </div>
+          <div className="hd"><h3>Today's draws</h3><input type="date" className="in sm" value={day} max={today()} onChange={e => { setDay(e.target.value); setPick(null) }} /></div>
           <div className="slots">
             {slots.map(s => {
-              const r = done(s.lot, s.h)
+              const r = done(s.lot, s.h), late = !r && (day < today() || nowH >= s.h)
               return (
-                <button key={s.lot + s.h} disabled={!!r} className={'slot' + (pick && pick.lot === s.lot && pick.h === s.h ? ' on' : '') + (r ? ' done' : '')} style={{ '--c': COL[s.lot] || '#9b4dff' }} onClick={() => setPick(s)}>
-                  <b>{s.lot}</b><span>{lbl(s.h)}</span>{r ? <em>{r.digits}</em> : <i>Pending</i>}
+                <button key={s.lot + s.h} disabled={!!r} className={'slot' + (pick && pick.lot === s.lot && pick.h === s.h ? ' on' : '') + (r ? ' done' : late ? ' late' : '')} style={{ '--c': COL[s.lot] || '#9b4dff' }} onClick={() => setPick(s)}>
+                  {r && <u className={'tag ' + (r.src === 'auto' ? 'a' : 'm')}>{r.src === 'auto' ? 'AUTO' : 'MANUAL'}</u>}
+                  <b>{s.lot}</b><span>{lbl(s.h)}</span>
+                  {r ? <em>{r.digits}{r.full_no && <small>{r.full_no}</small>}</em> : <i>{late ? 'Waiting for website…' : 'Upcoming'}</i>}
                 </button>
               )
             })}
           </div>
           {pick && (
             <div className="pub">
-              <p>Result for <b>{pick.lot} · {lbl(pick.h)}</b> on {day}</p>
+              <p>Enter by hand: <b>{pick.lot} · {lbl(pick.h)}</b> on {day}</p>
               <div className="digits">
                 {[0, 1, 2].map(i => <span key={i} className={digits[i] !== undefined ? 'f' : ''}>{digits[i] ?? ['A', 'B', 'C'][i]}</span>)}
                 <input className="hidden-in" inputMode="numeric" maxLength={3} value={digits} onChange={e => setDigits(e.target.value.replace(/\D/g, '').slice(0, 3))} autoFocus aria-label="Result digits" />
               </div>
-              <small>Publishing pays every ticket of this draw straight away. Wins of ₹15,000 or more go to Big wins for your approval. This cannot be undone.</small>
+              <small>Use this only if a website is late or wrong. Publishing pays every ticket straight away and cannot be undone.</small>
               <button className="btn gold" disabled={busy || digits.length !== 3} onClick={publish}>{busy ? 'Publishing…' : 'Publish ' + (digits || '___')}</button>
             </div>
           )}
         </section>
         <section className="card">
           <div className="hd"><h3>Recent results</h3></div>
-          {results.length ? <table><thead><tr><th>Date</th><th>Draw</th><th>Result</th></tr></thead><tbody>
-            {results.map(r => <tr key={r.day + r.lot + r.h}><td>{r.day}</td><td><i className="dot" style={{ background: COL[r.lot] }} />{r.lot} · {lbl(+r.h)}</td><td className="mono">{r.digits}</td></tr>)}
+          {results.length ? <table><thead><tr><th>Date</th><th>Draw</th><th>Website no.</th><th>Result</th><th>By</th></tr></thead><tbody>
+            {results.map(r => <tr key={r.day + r.lot + r.h}><td>{r.day}</td><td><i className="dot" style={{ background: COL[r.lot] }} />{r.lot} · {lbl(+r.h)}</td><td className="mono mut">{r.full_no || '—'}</td><td className="mono">{r.digits}</td><td><u className={'tag ' + (r.src === 'auto' ? 'a' : 'm')}>{r.src === 'auto' ? 'Auto' : 'Manual'}</u></td></tr>)}
           </tbody></table> : <div className="empty">No results published yet.</div>}
         </section>
       </div>
-    )
-  }
+    </>
+  )
+}
 
   // ================= approvals =================
   function Approvals({ title, rows, kind, reload, toast }) {
@@ -238,7 +204,7 @@ function Login({ onIn }) {
     if (!role) return <Login onIn={r => { setRole(r); setTab(r === 'admin' ? 'results' : 'analytics') }} />
 
     const tabs = role === 'admin'
-      ? [['results', '🎯 Results'], ['fetch', '⚡ Auto Fetch'], ['recharges', '💳 Recharges', ov?.recharges.length], ['wins', '🏆 Big wins', ov?.big_wins.length], ['analytics', '📊 Analytics']]
+      ? [['results', '🎯 Results'], ['recharges', '💳 Recharges', ov?.recharges.length], ['wins', '🏆 Big wins', ov?.big_wins.length], ['analytics', '📊 Analytics']]
       : [['analytics', '📊 Analytics']]
     return (
       <div className="shell">
@@ -248,12 +214,11 @@ function Login({ onIn }) {
           <button className="btn ghost sm" onClick={out}>Log out</button>
         </header>
         <main>
-          {role === 'admin' && !ov && tab !== 'analytics' && tab !== 'fetch' ? <div className="empty">Loading…</div>
-            : tab === 'results' ? <Results lots={ov.lots} results={ov.results} reload={reload} toast={toast} onGoFetch={() => setTab('fetch')} />
-            : tab === 'fetch' ? <AutoFetch reload={reload} toast={toast} />
-              : tab === 'recharges' ? <Approvals title="UPI recharges to check" rows={ov.recharges} kind="r" reload={reload} toast={toast} />
-                : tab === 'wins' ? <Approvals title="Wins of ₹15,000 or more" rows={ov.big_wins} kind="w" reload={reload} toast={toast} />
-                  : <Analytics toast={toast} />}
+          {role === 'admin' && !ov && tab !== 'analytics' ? <div className="empty">Loading…</div>
+            : tab === 'results' ? <Results lots={ov.lots} results={ov.results} auto={ov.auto} reload={reload} toast={toast} />
+            : tab === 'recharges' ? <Approvals title="UPI recharges to check" rows={ov.recharges} kind="r" reload={reload} toast={toast} />
+            : tab === 'wins' ? <Approvals title="Wins of ₹15,000 or more" rows={ov.big_wins} kind="w" reload={reload} toast={toast} />
+            : <Analytics toast={toast} />}
         </main>
         {msg && <div className={'toast' + (msg.bad ? ' bad' : '')}>{msg.m}</div>}
       </div>
