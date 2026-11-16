@@ -54,10 +54,10 @@ function AutoBar({ auto, reload, toast }) {
     <section className="card auto">
       <div className="au-top">
         <div className={'au-live' + (stale || !auto ? ' off' : '')}><i /><b>{stale || !auto ? 'Auto results: not running' : 'Auto results: ON'}</b></div>
-        <span className="au-meta">Checks the result websites every 5 min · last check <b>{ago(rows ? new Date(Date.now() + 330 * 60000).toISOString().slice(0, 19).replace('T', ' ') : auto?.at)}</b></span>
+        <span className="au-meta">Checks the result websites every 30 sec · last check <b>{ago(rows ? new Date(Date.now() + 330 * 60000).toISOString().slice(0, 19).replace('T', ' ') : auto?.at)}</b></span>
         <button className="btn gold sm" disabled={busy} onClick={now}>{busy ? <><span className="spin" />Checking…</> : '⟳ Fetch now'}</button>
       </div>
-      {(stale || !auto) && <p className="au-warn">The 5-minute Cron Job has not run recently. Check Cron Jobs in cPanel, or use Fetch now.</p>}
+      {(stale || !auto) && <p className="au-warn">The 30-second Cron Job has not run recently. Check Cron Jobs in cPanel, or use Fetch now.</p>}
       {list.length > 0 && <div className="au-list">
         {list.map(r => (
           <div key={r.lot + r.h} className={'au-row ' + r.state} style={{ '--c': COL[r.lot] }}>
