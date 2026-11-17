@@ -156,37 +156,93 @@ function Results({ lots, results, auto, reload, toast }) {
     )
   }
 
+  // sales per lottery and draw time for the month
+  function ByDraw({ rows }) {
+    const max = Math.max(1, ...rows.map(r => r.sales))
+    if (!rows.length) return <div className="empty">No tickets sold this month yet.</div>
+    return <div className="tscroll"><table className="rp-table bd"><thead><tr><th>Lottery · draw</th><th className="bd-barh">Sales</th><th>Tickets</th><th>Sales</th><th>Winnings</th><th>Profit</th></tr></thead><tbody>
+      {rows.map(r => <tr key={r.lot + r.h}><td><i className="dot" style={{ background: COL[r.lot] }} />{r.lot} · {lbl(r.h)}</td>
+        <td className="bd-barh"><span className="bd-bar"><u style={{ width: r.sales / max * 100 + '%', background: COL[r.lot] }} /></span></td>
+        <td>{r.tickets}</td><td>{inr(r.sales)}</td><td>{inr(r.winnings)}</td><td className={r.profit >= 0 ? 'pos' : 'neg'}>{inr(r.profit)}</td></tr>)}
+    </tbody></table></div>
+  }
+
+  // today's open draws: how much is bet, most-bet numbers, and the results that would cost the most
+  function Exposure({ toast }) {
+    const [d, setD] = useState(null), [busy, setBusy] = useState(false)
+    const load = () => { setBusy(true); api('exposure').then(setD, x => toast(x.message, true)).finally(() => setBusy(false)) }
+    useEffect(() => { load(); const t = setInterval(load, 60000); return () => clearInterval(t) }, [])
+    const mins = s => s <= 0 ? 'Booking closed' : s < 3600 ? `Closes in ${Math.ceil(s / 60)} min` : `Closes in ${Math.floor(s / 3600)} h ${Math.ceil(s % 3600 / 60)} min`
+    return (
+      <div className="card">
+        <div className="hd"><h3>Today's open draws: risk check</h3><button className="btn ghost sm" disabled={busy} onClick={load}>{busy ? 'Refreshing…' : '⟳ Refresh'}</button></div>
+        <p className="mut" style={{ margin: '-4px 0 14px' }}>For each draw not yet published: money bet so far, the most-bet numbers, and which results would cost the most to pay out.</p>
+        {!d ? <div className="empty">Loading…</div> : !d.draws.length ? <div className="empty">All of today's draws are published.</div> :
+          <div className="ex-grid">{d.draws.map(x => {
+            const worst = x.worst[0]?.payout || 0, net = x.sales - worst
+            return (
+              <div key={x.lot + x.h} className="ex" style={{ '--c': COL[x.lot] }}>
+                <div className="ex-top"><b>{x.lot} · {lbl(x.h)}</b><span>{mins(x.closes_in)}</span></div>
+                <div className="ex-nums"><div><small>Bet so far</small><b>{inr(x.sales)}</b><em>{x.tickets} tickets</em></div>
+                  <div><small>Worst result costs</small><b className={worst > x.sales ? 'neg' : ''}>{inr(worst)}</b><em className={net >= 0 ? 'pos' : 'neg'}>{x.tickets ? (net >= 0 ? 'still ' + inr(net) + ' profit' : inr(-net) + ' loss') : '—'}</em></div></div>
+                {x.tickets ? <>
+                  <h4>Costliest results</h4>
+                  <div className="ex-risk">{x.worst.map(w => <span key={w.result} className={w.payout > x.sales ? 'hot' : ''}><b>{w.result}</b>{inr(w.payout)}</span>)}</div>
+                  <h4>Most-bet numbers</h4>
+                  <div className="ex-bets">{x.top_bets.map(b => <span key={b.bet}><b>{b.bet.split(' ')[1]}</b><small>{b.bet.split(' ')[0].length === 1 ? 'Single ' + b.bet[0] : b.bet.split(' ')[0].length === 2 ? 'Double ' + b.bet.split(' ')[0] : 'Triple'}</small>{inr(b.amount)}</span>)}</div>
+                </> : <p className="mut">No tickets yet.</p>}
+              </div>
+            )
+          })}</div>}
+      </div>
+    )
+  }
+
   // ================= analytics =================
   function Analytics({ toast }) {
     const [m, setM] = useState(month()), [d, setD] = useState(null)
     useEffect(() => { setD(null); api('analytics', { month: m }).then(setD, x => toast(x.message, true)) }, [m])
     const t = d?.totals || {}
     const max = Math.max(1, ...(d?.days || []).map(x => Math.max(x.paid, x.winnings)))
+    const label = new Date(m + '-01T00:00:00').toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
     return (
-      <section className="card">
-        <div className="hd"><h3>Monthly analytics</h3>
-          <div className="row-r"><input type="month" className="in sm" value={m} max={month()} onChange={e => setM(e.target.value)} />
-            <a className="btn gold sm" href={excelUrl(m)}>⬇ Download Excel</a></div>
-        </div>
-        <div className="kpis">
-          <div className="kpi"><small>Amount paid by players</small><b>{inr(t.paid)}</b><em>{t.tickets || 0} tickets</em></div>
-          <div className="kpi"><small>Winnings paid</small><b>{inr(t.winnings)}</b></div>
-          <div className="kpi"><small>Referral bonus</small><b>{inr(t.bonus)}</b></div>
-          <div className={'kpi ' + ((t.profit || 0) >= 0 ? 'pos' : 'neg')}><small>Profit</small><b>{inr(t.profit)}</b><em>paid − winnings − bonus</em></div>
-          <div className="kpi"><small>UPI recharges</small><b>{inr(t.recharges)}</b></div>
-        </div>
-        {d ? <>
-          <div className="bars" role="img" aria-label="Daily amount paid and winnings">
-            {d.days.map(x => <div key={x.day} className="bar" title={`${x.day}: paid ${inr(x.paid)}, winnings ${inr(x.winnings)}`}>
-              <i style={{ height: x.paid / max * 100 + '%' }} /><i className="w" style={{ height: x.winnings / max * 100 + '%' }} /><span>{+x.day.slice(8)}</span>
-            </div>)}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+        <Exposure toast={toast} />
+
+        <section className="card">
+          <div className="hd"><h3>Monthly analytics</h3>
+            <div className="row-r"><input type="month" className="in sm" value={m} max={month()} onChange={e => setM(e.target.value)} />
+              <a className="btn gold sm" href={excelUrl(m)}>⬇ Download Excel</a></div>
           </div>
-          <div className="legend"><span><i />Paid by players</span><span><i className="w" />Winnings</span></div>
-          <div className="tscroll"><table><thead><tr><th>Date</th><th>Tickets</th><th>Paid</th><th>Winnings</th><th>Bonus</th><th>Profit</th><th>Recharges</th></tr></thead><tbody>
-            {d.days.filter(x => x.tickets || x.winnings || x.recharges || x.bonus).map(x => <tr key={x.day}><td>{x.day}</td><td>{x.tickets}</td><td>{inr(x.paid)}</td><td>{inr(x.winnings)}</td><td>{inr(x.bonus)}</td><td className={x.profit >= 0 ? 'pos' : 'neg'}>{inr(x.profit)}</td><td>{inr(x.recharges)}</td></tr>)}
-          </tbody></table></div>
-        </> : <div className="empty">Loading…</div>}
-      </section>
+          <div className="kpis">
+            <div className="kpi"><small>Amount paid by players</small><b>{inr(t.paid)}</b><em>{t.tickets || 0} tickets</em></div>
+            <div className="kpi"><small>Winnings paid</small><b>{inr(t.winnings)}</b></div>
+            <div className="kpi"><small>Referral bonus</small><b>{inr(t.bonus)}</b></div>
+            <div className={'kpi ' + ((t.profit || 0) >= 0 ? 'pos' : 'neg')}><small>Profit</small><b>{inr(t.profit)}</b><em>paid − winnings − bonus</em></div>
+            <div className="kpi"><small>UPI recharges</small><b>{inr(t.recharges)}</b></div>
+          </div>
+        </section>
+
+        <div className="card">
+          <div className="hd"><h3>Sales by lottery and draw</h3><span className="mut">{label}</span></div>
+          {d ? <ByDraw rows={d.by_draw || []} /> : <div className="empty">Loading…</div>}
+        </div>
+
+        <div className="card">
+          <div className="hd"><h3>Day by day</h3><span className="mut">{label}</span></div>
+          {d ? <>
+            <div className="bars" role="img" aria-label="Daily amount paid and winnings">
+              {d.days.map(x => <div key={x.day} className="bar" title={`${x.day}: paid ${inr(x.paid)}, winnings ${inr(x.winnings)}`}>
+                <i style={{ height: x.paid / max * 100 + '%' }} /><i className="w" style={{ height: x.winnings / max * 100 + '%' }} /><span>{+x.day.slice(8)}</span>
+              </div>)}
+            </div>
+            <div className="legend"><span><i />Paid by players</span><span><i className="w" />Winnings</span></div>
+            <div className="tscroll"><table><thead><tr><th>Date</th><th>Tickets</th><th>Paid</th><th>Winnings</th><th>Bonus</th><th>Profit</th><th>Recharges</th></tr></thead><tbody>
+              {d.days.filter(x => x.tickets || x.winnings || x.recharges || x.bonus).map(x => <tr key={x.day}><td>{x.day}</td><td>{x.tickets}</td><td>{inr(x.paid)}</td><td>{inr(x.winnings)}</td><td>{inr(x.bonus)}</td><td className={x.profit >= 0 ? 'pos' : 'neg'}>{inr(x.profit)}</td><td>{inr(x.recharges)}</td></tr>)}
+            </tbody></table></div>
+          </> : <div className="empty">Loading…</div>}
+        </div>
+      </div>
     )
   }
 
