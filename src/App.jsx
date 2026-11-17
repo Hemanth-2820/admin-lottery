@@ -278,7 +278,7 @@ function Results({ lots, results, auto, reload, toast }) {
   }
 
   // ================= players =================
-  const TX = { recharge: 'Money added', bet: 'Ticket', win: 'Win', bonus: 'Referral bonus', refund: 'Refund', withdraw: 'Withdrawal' }
+  const TX = { recharge: 'Money added', bet: 'Ticket', win: 'Win', bonus: 'Referral bonus', refund: 'Refund', withdraw: 'Withdrawal', adjust: 'Admin adjust' }
   function PlayerTxns({ id }) {
     const [t, setT] = useState(null)
     useEffect(() => { api('admin_player', { id }).then(r => setT(r.txns), () => setT([])) }, [id])
@@ -292,6 +292,13 @@ function Results({ lots, results, auto, reload, toast }) {
   function Players({ toast }) {
     const [q, setQ] = useState(''), [d, setD] = useState(null), [page, setPage] = useState(0)
     const [view, setView] = useState(null), [blk, setBlk] = useState(null), [note, setNote] = useState(''), [busy, setBusy] = useState(false)
+    const [adj, setAdj] = useState(null), [aAmt, setAAmt] = useState(''), [aAdd, setAAdd] = useState(true), [aNote, setANote] = useState(''), [aOk, setAOk] = useState(false)
+    const openAdj = id => { setAdj(adj === id ? null : id); setAAmt(''); setAAdd(true); setANote(''); setAOk(false); setBlk(null) }
+    const adjust = async x => {
+      setBusy(true)
+      try { const r = await api('admin_adjust', { id: x.id, amount: aAdd ? +aAmt : -aAmt, note: aNote.trim() }); toast((aAdd ? inr(aAmt) + ' added to ' : inr(aAmt) + ' removed from ') + x.email + '. Wallet now ' + inr(r.wallet)); setAdj(null); load(); if (view === x.id) { setView(null); setTimeout(() => setView(x.id), 0) } } catch (e) { toast(e.message, true) }
+      setBusy(false)
+    }
     const load = (qq = q, pg = page) => api('admin_players', { q: qq, page: pg }).then(setD, x => toast(x.message, true))
     useEffect(() => { const t = setTimeout(() => { setPage(0); load(q, 0) }, 300); return () => clearTimeout(t) }, [q])
     const block = async (x, b) => {
@@ -320,6 +327,7 @@ function Results({ lots, results, auto, reload, toast }) {
                   <td>{inr(x.wallet)}</td><td>{inr(x.added)}</td><td>{inr(x.spent)}</td><td>{inr(x.won)}</td><td>{inr(x.taken)}</td>
                   <td>{x.last_play ? x.last_play.slice(0, 10) : '—'}</td>
                   <td className="pl-acts">
+                    <button className="btn ghost sm" onClick={() => openAdj(x.id)}>Adjust</button>
                     <button className="btn ghost sm" onClick={() => setView(view === x.id ? null : x.id)}>{view === x.id ? 'Hide' : 'History'}</button>
                     {+x.blocked ? <button className="btn ok sm" disabled={busy} onClick={() => block(x, false)}>Unblock</button>
                       : <button className="btn no sm" onClick={() => { setBlk(x.id); setNote('') }}>Block</button>}
@@ -330,6 +338,20 @@ function Results({ lots, results, auto, reload, toast }) {
                   <button className="btn no" disabled={busy} onClick={() => block(x, true)}>{busy ? 'Saving…' : 'Block ' + x.email}</button>
                   <button className="btn ghost" onClick={() => setBlk(null)}>Cancel</button></div>
                   <p className="mut" style={{ margin: '8px 0 0' }}>They will be signed out and can't sign in or play. Their wallet money stays as it is.</p></td></tr>}
+                {adj === x.id && <tr className="pl-row"><td colSpan={8}>
+                  <div className="wd-form">
+                    <div className="rr-lots" style={{ margin: 0 }}><button className={aAdd ? 'on' : ''} onClick={() => { setAAdd(true); setAOk(false) }}>+ Add money</button><button className={!aAdd ? 'on' : ''} onClick={() => { setAAdd(false); setAOk(false) }}>− Remove money</button></div>
+                    <input className="in" style={{ maxWidth: 130 }} type="number" inputMode="numeric" min="1" placeholder="₹ amount" value={aAmt} onChange={e => { setAAmt(e.target.value); setAOk(false) }} />
+                    <input className="in" placeholder="Reason, e.g. paid by cash / wrong recharge" value={aNote} onChange={e => { setANote(e.target.value); setAOk(false) }} />
+                  </div>
+                  <div className="wd-form" style={{ marginTop: 8 }}>
+                    {!aOk ? <button className={'btn ' + (aAdd ? 'ok' : 'no')} disabled={!(+aAmt > 0) || !aNote.trim()} onClick={() => setAOk(true)}>Continue</button> : <>
+                      <span className="bw-q">{aAdd ? `Add ${inr(aAmt)} to ${x.email}? Wallet will be ${inr(+x.wallet + +aAmt)}.` : `Remove ${inr(aAmt)} from ${x.email}? Wallet will be ${inr(+x.wallet - aAmt)}.`}</span>
+                      <button className={'btn ' + (aAdd ? 'ok' : 'no')} disabled={busy || (!aAdd && +aAmt > +x.wallet)} onClick={() => adjust(x)}>{busy ? 'Saving…' : 'Yes, confirm'}</button></>}
+                    <button className="btn ghost" onClick={() => setAdj(null)}>Cancel</button>
+                  </div>
+                  <p className="mut" style={{ margin: '8px 0 0' }}>Wallet now {inr(x.wallet)}. This shows in the player's history as "Admin adjust" with your reason.{!aAdd && +aAmt > +x.wallet ? ' You cannot remove more than the wallet has.' : ''}</p>
+                </td></tr>}
                 {+x.blocked && x.block_note && blk !== x.id ? <tr className="pl-row"><td colSpan={8} className="mut">Blocked because: {x.block_note}</td></tr> : null}
                 {view === x.id && <tr className="pl-row"><td colSpan={8}><PlayerTxns id={x.id} /></td></tr>}
               </React.Fragment>)}
