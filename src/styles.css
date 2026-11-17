@@ -166,3 +166,16 @@ td.mut{color:var(--mut)}
 .upi-qr img{width:96px;height:96px;object-fit:contain;border-radius:10px;background:#fff;padding:4px}
 .upi-qr>div{display:flex;flex-direction:column;align-items:flex-start;gap:6px}.upi-qr label{cursor:pointer}
 
+/* recent results: filter by day and lottery */
+.rr-days,.rr-lots{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;margin-bottom:8px;scrollbar-width:none}
+.rr-days button,.rr-lots button{flex:none;height:34px;padding:0 12px;border-radius:99px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.03);color:var(--mut);font:600 13px Poppins,sans-serif;cursor:pointer;display:flex;align-items:center;gap:6px}
+.rr-days button small{font:700 11px var(--mono);background:rgba(255,255,255,.1);border-radius:99px;padding:1px 7px}
+.rr-days button.on{background:#ffd23f;border-color:#ffd23f;color:#2a1300}.rr-days button.on small{background:rgba(0,0,0,.15)}
+.rr-lots button.on{background:color-mix(in srgb,var(--c) 22%,transparent);border-color:var(--c);color:#fff}
+.rr-list{display:flex;flex-direction:column;gap:8px;max-height:520px;overflow-y:auto;padding-right:4px;margin-top:6px}
+.rr{display:grid;grid-template-columns:62px 1fr auto auto auto;gap:12px;align-items:center;padding:10px 12px;border-radius:12px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-left:4px solid var(--c)}
+.rr-time b{font:700 14px var(--mono);color:var(--ink)}
+.rr-lot b{display:block;font-size:15px}.rr-lot small{color:var(--mut);font-size:12px}
+.rr-num{display:flex;gap:4px}.rr-num i{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;font:800 15px var(--mono);font-style:normal;color:#2a1300;background:radial-gradient(circle at 35% 30%,#fff7c8,#ffd23f 55%,#d08a00)}
+@media (max-width:640px){.rr{grid-template-columns:52px 1fr auto}.rr .tag,.rr .undo-cell{grid-column:2/-1;justify-self:start}}
+

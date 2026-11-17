@@ -89,6 +89,22 @@ function Results({ lots, results, auto, reload, toast }) {
     } catch (x) { toast(x.message, true) }
     setBusy(false)
   }
+  const [undo, setUndo] = useState(null)
+  const unpublish = async r => {
+    setBusy(true)
+    try {
+      await api('admin_unpublish', { day: r.day, lot: r.lot, h: r.h })
+      toast(`Undid ${r.lot} ${lbl(+r.h)}`)
+      setUndo(null)
+      reload()
+    } catch (x) { toast(x.message, true) }
+    setBusy(false)
+  }
+  const days = [...new Set([today(), ...results.map(r => r.day)])].sort().reverse().slice(0, 7)
+  const [rDay, setRDay] = useState(today()), [rLot, setRLot] = useState('All')
+  const LOTN = Object.keys(lots || {})
+  const dayLbl = d => { const t = today(), y = new Date(Date.parse(t) - 864e5).toISOString().slice(0, 10); return d === t ? 'Today' : d === y ? 'Yesterday' : new Date(d).toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' }) }
+  const shown = results.filter(r => r.day === rDay && (rLot === 'All' || r.lot === rLot)).sort((a, b) => b.h - a.h)
   return (
     <>
       <AutoBar auto={auto} reload={reload} toast={toast} />
@@ -120,10 +136,17 @@ function Results({ lots, results, auto, reload, toast }) {
           )}
         </section>
         <section className="card">
-          <div className="hd"><h3>Recent results</h3></div>
-          {results.length ? <table><thead><tr><th>Date</th><th>Draw</th><th>Website no.</th><th>Result</th><th>By</th></tr></thead><tbody>
-            {results.map(r => <tr key={r.day + r.lot + r.h}><td>{r.day}</td><td><i className="dot" style={{ background: COL[r.lot] }} />{r.lot} · {lbl(+r.h)}</td><td className="mono mut">{r.full_no || '—'}</td><td className="mono">{r.digits}</td><td><u className={'tag ' + (r.src === 'auto' ? 'a' : 'm')}>{r.src === 'auto' ? 'Auto' : 'Manual'}</u></td></tr>)}
-          </tbody></table> : <div className="empty">No results published yet.</div>}
+          <div className="hd"><h3>Recent results</h3><span className="mut">{shown.length} result{shown.length === 1 ? '' : 's'}</span></div>
+          <div className="rr-days">{days.map(d => <button key={d} className={rDay === d ? 'on' : ''} onClick={() => setRDay(d)}>{dayLbl(d)}<small>{results.filter(r => r.day === d).length}</small></button>)}</div>
+          <div className="rr-lots">{['All', ...LOTN].map(l => <button key={l} className={rLot === l ? 'on' : ''} style={{ '--c': COL[l] || '#ffd23f' }} onClick={() => setRLot(l)}>{l}</button>)}</div>
+          {shown.length ? <div className="rr-list">{shown.map(r => { const k = r.day + r.lot + r.h; return (
+            <div key={k} className="rr" style={{ '--c': COL[r.lot] }}>
+              <div className="rr-time"><b>{lbl(+r.h).replace(':00', '')}</b></div>
+              <div className="rr-lot"><b>{r.lot}</b><small>{r.full_no ? 'Website ' + r.full_no : r.src === 'auto' ? 'Auto' : 'Entered by hand'}</small></div>
+              <div className="rr-num">{r.digits.split('').map((x, i) => <i key={i}>{x}</i>)}</div>
+              <u className={'tag ' + (r.src === 'auto' ? 'a' : 'm')}>{r.src === 'auto' ? 'AUTO' : 'MANUAL'}</u>
+              <div className="undo-cell">{undo === k ? <><button className="btn no sm" disabled={busy} onClick={() => unpublish(r)}>{busy ? '…' : 'Yes, undo'}</button><button className="btn ghost sm" onClick={() => setUndo(null)}>No</button></> : <button className="btn ghost sm" onClick={() => setUndo(k)}>Undo</button>}</div>
+            </div>) })}</div> : <div className="empty">{rLot === 'All' ? 'No results for ' + dayLbl(rDay) + ' yet.' : 'No ' + rLot + ' result for ' + dayLbl(rDay) + ' yet.'}</div>}
         </section>
       </div>
     </>
