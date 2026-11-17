@@ -340,6 +340,63 @@ function Results({ lots, results, auto, reload, toast }) {
     )
   }
 
+// ================= recharges =================
+function Recharges({ ov, reload, toast }) {
+  const rows = ov.recharges || [], hist = ov.rc_history || []
+  const t = Object.fromEntries((ov.rc_today || []).map(r => [r.status, r]))
+  const [ask, setAsk] = useState(null), [busy, setBusy] = useState(0), [f, setF] = useState('all')
+  const act = async (x, ok) => {
+    setBusy(x.id)
+    try { await api('admin_recharge', { id: x.id, approve: ok }); toast(ok ? inr(x.amount) + ' added to ' + x.email + '\'s wallet.' : 'Rejected. No money was added.'); setAsk(null); reload() } catch (e) { toast(e.message, true) }
+    setBusy(0)
+  }
+  const copy = async v => { try { await navigator.clipboard.writeText(v); toast('Copied ' + v) } catch { toast(v) } }
+  const accts = [...new Set(rows.map(x => x.paid_to).filter(Boolean))]
+  const list = f === 'all' ? rows : rows.filter(x => x.paid_to === f)
+  const waiting = rows.reduce((a, x) => a + +x.amount, 0)
+  return (
+    <section className="rp">
+      <div className="rp-head"><div><h2>Recharges</h2><p>Players who paid by UPI. Check the UTR in your UPI or bank app, then approve to add the money to their wallet.</p></div></div>
+      <div className="rp-stats bw-stats">
+        <div><small>Waiting for you</small><b className={rows.length ? 'warn' : ''}>{inr(waiting)}</b><span>{rows.length} recharge{rows.length === 1 ? '' : 's'}</span></div>
+        <div><small>Added today</small><b className="pos">{inr(t.added?.s)}</b><span>{+(t.added?.n || 0)} approved</span></div>
+        <div><small>Rejected today</small><b>{+(t.rejected?.n || 0)}</b><span>{inr(t.rejected?.s)} not added</span></div>
+      </div>
+
+      <div className="card">
+        <div className="hd"><h3>Waiting for approval</h3>{accts.length > 1 && <div className="rr-lots" style={{ margin: 0 }}>{['all', ...accts].map(a => <button key={a} className={f === a ? 'on' : ''} onClick={() => setF(a)}>{a === 'all' ? 'All accounts' : a}</button>)}</div>}</div>
+        <p className="note">Approve only if you can see the money in your account with the same UTR and amount.</p>
+        {list.length ? <div className="bw-list">{list.map(x => (
+          <div key={x.id} className="bw" style={{ '--c': '#16c784' }}>
+            <div className="bw-main">
+              <div className="bw-who"><b>{x.email}</b><span>Sent {x.created_at?.slice(0, 16)}{x.paid_to ? <> · paid to <b>{x.paid_to}</b></> : null}</span></div>
+              <div className="bw-res"><small>UTR</small><button className="wd-upi" onClick={() => copy(x.utr)} title="Copy">{x.utr} ⧉</button></div>
+              <div className="bw-amt"><small>Amount</small><b>{inr(x.amount)}</b></div>
+            </div>
+            <div className="bw-acts">
+              {ask?.id === x.id ? <>
+                <span className="bw-q">{ask.ok ? `Add ${inr(x.amount)} to ${x.email}?` : 'Reject? No money will be added.'}</span>
+                <button className={'btn ' + (ask.ok ? 'ok' : 'no')} disabled={busy === x.id} onClick={() => act(x, ask.ok)}>{busy === x.id ? 'Saving…' : ask.ok ? 'Yes, add money' : 'Yes, reject'}</button>
+                <button className="btn ghost" onClick={() => setAsk(null)}>Cancel</button>
+              </> : <>
+                <button className="btn ok" onClick={() => setAsk({ id: x.id, ok: true })}>Money received, approve</button>
+                <button className="btn no" onClick={() => setAsk({ id: x.id, ok: false })}>Reject</button>
+              </>}
+            </div>
+          </div>
+        ))}</div> : <div className="bw-empty"><b>Nothing waiting</b><span>When a player pays by UPI and sends the UTR, it shows up here.</span></div>}
+      </div>
+
+      <div className="card">
+        <div className="hd"><h3>Recent decisions</h3><span className="mut">last 30</span></div>
+        {hist.length ? <div className="tscroll"><table className="rp-table"><thead><tr><th>Player</th><th>Paid to</th><th>UTR</th><th>Amount</th><th>Decision</th><th>When</th></tr></thead><tbody>
+          {hist.map(x => <tr key={x.id}><td>{x.email}</td><td>{x.paid_to || '—'}</td><td>{x.utr}</td><td>{inr(x.amount)}</td><td><span className={'tag ' + (x.status === 'added' ? 'a' : 'm')}>{x.status === 'added' ? 'Added' : 'Rejected'}</span></td><td>{x.decided_at?.slice(0, 16)}</td></tr>)}
+        </tbody></table></div> : <div className="empty">No decisions yet.</div>}
+      </div>
+    </section>
+  )
+}
+
   // ================= withdrawals =================
   function Withdrawals({ ov, reload, toast }) {
     const rows = ov.withdrawals || [], hist = ov.wd_history || []
@@ -577,7 +634,7 @@ function Results({ lots, results, auto, reload, toast }) {
         <main>
           {role === 'admin' && !ov && tab !== 'analytics' && tab !== 'players' && tab !== 'settings' ? <div className="empty">Loading…</div>
             : tab === 'results' ? <Results lots={ov.lots} results={ov.results} auto={ov.auto} reload={reload} toast={toast} />
-            : tab === 'recharges' ? <Approvals title="UPI recharges to check" rows={ov.recharges} kind="r" reload={reload} toast={toast} />
+            : tab === 'recharges' ? <Recharges ov={ov} reload={reload} toast={toast} />
             : tab === 'wins' ? <BigWins ov={ov} reload={reload} toast={toast} />
             : tab === 'withdraw' ? <Withdrawals ov={ov} reload={reload} toast={toast} />
             : tab === 'players' ? <Players toast={toast} />
