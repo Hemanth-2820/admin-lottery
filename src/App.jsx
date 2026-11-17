@@ -1,5 +1,6 @@
 
 import React, { useCallback, useEffect, useState } from 'react'
+import QRCode from 'qrcode'
 import { api, excelUrl, getToken, setToken } from './api.js'
 
 const inr = n => '₹' + Math.round(Number(n) || 0).toLocaleString('en-IN')
@@ -158,13 +159,31 @@ function Results({ lots, results, auto, reload, toast }) {
   }
 
   // ================= settings =================
+  const API_BASE = (import.meta.env.VITE_API_URL || '').replace(/[^/]*$/, '')
+  // shows the owner's uploaded QR, or a QR made from the UPI ID; lets the owner upload or remove a picture
+  function UpiQr({ u, onQr, toast }) {
+    const [auto, setAuto] = useState(''), [busy, setBusy] = useState(false)
+    useEffect(() => { if (!u.qr && /@/.test(u.id)) QRCode.toDataURL(`upi://pay?pa=${encodeURIComponent(u.id)}&pn=${encodeURIComponent(u.name || '')}&cu=INR`, { margin: 1, width: 240 }).then(setAuto, () => setAuto('')); else setAuto('') }, [u.id, u.name, u.qr])
+    const pick = e => {
+      const f = e.target.files[0]; e.target.value = ''; if (!f) return
+      if (f.size > 1500000) return toast('Picture must be smaller than 1.5 MB', true)
+      const r = new FileReader(); r.onload = async () => { setBusy(true); try { const x = await api('admin_upload_qr', { image: r.result }); onQr(x.path); toast('QR uploaded. Click Save changes.') } catch (er) { toast(er.message, true) } setBusy(false) }; r.readAsDataURL(f)
+    }
+    const src = u.qr ? API_BASE + u.qr : auto
+    return <div className="upi-qr">
+      {src ? <img src={src} alt={'QR for ' + u.id} /> : <span className="mut">Enter a UPI ID</span>}
+      <div><small className="mut">{u.qr ? 'Your uploaded QR' : 'Made from the UPI ID'}</small>
+        <label className="btn ghost sm">{busy ? 'Uploading…' : u.qr ? 'Change QR' : 'Upload your QR'}<input type="file" accept="image/png,image/jpeg,image/webp" hidden onChange={pick} /></label>
+        {u.qr && <button className="btn ghost sm" onClick={() => onQr('')}>Use auto QR</button>}</div>
+    </div>
+  }
   const Num = ({ v, on, pre = '₹', w }) => <label className="st-num" style={w ? { width: w } : null}>{pre && <span>{pre}</span>}<input type="number" inputMode="numeric" value={v} onChange={e => on(e.target.value === '' ? '' : +e.target.value)} /></label>
   const HOURS = Array.from({ length: 18 }, (_, i) => i + 6)   // 6 AM .. 11 PM
   function Settings({ toast }) {
     const [f, setF] = useState(null), [orig, setOrig] = useState(''), [busy, setBusy] = useState(false), [ask, setAsk] = useState(false)
     const load = () => api('config').then(r => {
       const c = r.config, x = { lots: Object.fromEntries(c.lots.map(l => [l.k, l.h])), price: c.price, win: c.win, win_last2: c.last[0], win_last1: c.last[1],
-        close_min: Math.round(c.close / 60), approval: c.approval, ref_bonus: c.ref_bonus, upis: (c.upis && c.upis.length ? c.upis : [{ ...c.upi, on: true }]).map(u => ({ id: u.id, name: u.name, on: u.on !== false })) }
+        close_min: Math.round(c.close / 60), approval: c.approval, ref_bonus: c.ref_bonus, upis: (c.upis && c.upis.length ? c.upis : [{ ...c.upi, on: true }]).map(u => ({ id: u.id, name: u.name, on: u.on !== false, qr: u.qr || '' })) }
       setF(x); setOrig(JSON.stringify(x))
     }, e => toast(e.message, true))
     useEffect(() => { load() }, [])
@@ -214,8 +233,9 @@ function Results({ lots, results, auto, reload, toast }) {
                 <button className={'sw' + (u.on ? ' on' : '')} onClick={() => setUpi(i, { on: !u.on })} aria-label={u.on ? 'Turn off' : 'Turn on'}><i /></button>
                 <button className="btn ghost sm" onClick={() => moveUpi(i, -1)} disabled={!i} aria-label="Move up">↑</button>
                 <button className="btn ghost sm" onClick={() => set('upis', f.upis.filter((_, j) => j !== i))} disabled={f.upis.length < 2} aria-label="Remove">✕</button>
+                <UpiQr u={u} onQr={qr => setUpi(i, { qr })} toast={toast} />
               </div>))}</div>
-            {f.upis.length < 10 && <button className="btn ghost sm" style={{ marginTop: 10 }} onClick={() => set('upis', [...f.upis, { id: '', name: f.upis[0]?.name || 'Murugan', on: true }])}>+ Add UPI ID</button>}
+            {f.upis.length < 10 && <button className="btn ghost sm" style={{ marginTop: 10 }} onClick={() => set('upis', [...f.upis, { id: '', name: f.upis[0]?.name || 'Murugan', on: true, qr: '' }])}>+ Add UPI ID</button>}
           </div>
         </div>
 
