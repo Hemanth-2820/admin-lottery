@@ -89,3 +89,66 @@ td.mut{color:var(--mut)}
 .ex-risk span b{color:#fff}.ex-risk span.hot{background:rgba(255,77,106,.15);color:var(--no)}
 .ex-bets span{display:grid;grid-template-columns:auto auto;gap:0 6px;padding:5px 9px;border-radius:8px;background:rgba(255,255,255,.05);font:12px var(--mono)}
 .ex-bets span b{grid-row:span 2;font-size:16px;color:#ffd23f;align-self:center}.ex-bets small{color:var(--mut);font:11px Poppins}
+
+/* common rp pages: big wins, withdrawals, players, settings */
+.rp{display:flex;flex-direction:column;gap:16px}
+.rp-head{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;flex-wrap:wrap;margin-bottom:4px}
+.rp-head h2{font-size:22px;font-weight:800;color:var(--ink)}
+.rp-head p{color:var(--mut);font-size:13px;margin-top:2px}
+.rp-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:4px}
+.rp-stats>div{padding:14px 16px;border-radius:16px;background:rgba(0,0,0,.25);border:1px solid var(--line);display:flex;flex-direction:column;gap:3px}
+.rp-stats small{color:var(--mut);font-size:12px}
+.rp-stats b{font:800 22px var(--mono);color:var(--ink)}
+.rp-stats span{color:var(--mut);font-size:12px}
+.rp-table{width:100%;border-collapse:collapse;font-size:13px}
+.rp-table th{text-align:left;color:var(--mut);font-weight:600;padding:10px 12px;border-bottom:1px solid var(--line);white-space:nowrap}
+.rp-table td{padding:10px 12px;border-bottom:1px solid var(--line);white-space:nowrap}
+
+/* big wins */
+.bw-stats{grid-template-columns:repeat(3,1fr)}.warn{color:#ffc21a!important}
+.bw-list{display:flex;flex-direction:column;gap:12px}
+.bw{border:1px solid rgba(255,255,255,.08);border-left:4px solid var(--c);border-radius:12px;padding:14px 16px;background:rgba(255,255,255,.02)}
+.bw-main{display:grid;grid-template-columns:1fr auto auto;gap:24px;align-items:center}
+.bw-who b{display:block;font-size:15px}.bw-who span{font-size:13px;color:var(--mut)}.bw-who code{font-family:var(--mono);color:var(--ink)}
+.bw-res,.bw-amt{text-align:right}.bw-res small,.bw-amt small{display:block;font-size:12px;color:var(--mut)}
+.bw-res b{font:800 22px var(--mono);letter-spacing:.15em;color:#ffd23f}.bw-amt b{font:800 22px var(--mono)}
+.bw-lines{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.bw-lines span{padding:4px 10px;border-radius:8px;background:rgba(255,255,255,.05);font-size:12px}.bw-lines b{font-family:var(--mono);color:#ffd23f}
+.bw-acts{display:flex;align-items:center;justify-content:flex-end;gap:8px;margin-top:12px;flex-wrap:wrap}
+.bw-q{margin-right:auto;font-size:14px;font-weight:600}
+.bw-empty{display:flex;flex-direction:column;align-items:center;gap:6px;padding:40px 10px;text-align:center;color:var(--mut);font-size:14px}.bw-empty b{color:var(--ink);font-size:16px}
+@media (max-width:700px){.bw-main{grid-template-columns:1fr 1fr}.bw-who{grid-column:span 2}.bw-res,.bw-amt{text-align:left}.bw-stats{grid-template-columns:1fr}}
+
+/* withdrawals */
+.wd-upi{font:700 15px var(--mono);color:#7cc8ff;background:rgba(47,168,255,.12);border:1px solid rgba(47,168,255,.4);border-radius:8px;padding:4px 10px;cursor:pointer}
+.wd-form{display:grid;grid-template-columns:1fr auto auto;gap:8px;margin-top:12px}
+@media (max-width:700px){.wd-form{grid-template-columns:1fr}}
+
+/* players */
+.pl-search{width:min(320px,100%)}
+.pl-table td{vertical-align:middle}
+.pl-mail{display:block;font-family:Poppins,sans-serif;font-weight:600}.pl-sub{display:flex;gap:6px;align-items:center;color:var(--mut);font:12px Poppins,sans-serif;margin-top:2px}
+.rp-table.pl-table td:first-child{font-family:Poppins,sans-serif}
+.pl-acts{white-space:nowrap}.pl-acts .btn{margin-left:6px}
+.pl-blocked td{opacity:.75}.pl-blocked td:first-child,.pl-blocked td:last-child{opacity:1}
+.pl-row td{background:rgba(255,255,255,.025);text-align:left!important;font-family:Poppins,sans-serif!important}
+.pl-tx{padding:4px 0}.pl-tx table{font-size:13px}
+.pl-pages{display:flex;align-items:center;justify-content:center;gap:12px;margin-top:14px}
+
+/* settings */
+.st-grid{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:16px}
+@media (max-width:960px){.st-grid{grid-template-columns:1fr}}
+.st-grid h3{margin:0 0 12px}
+.st-table{width:100%;border-collapse:collapse}.st-table th{text-align:left;font-size:12px;color:var(--mut);font-weight:600;padding:6px 8px}
+.st-table td{padding:8px;border-top:1px solid rgba(255,255,255,.07);vertical-align:middle}.st-table td b{display:block}.st-table td small{color:var(--mut);font-size:12px}
+.st-num{display:inline-flex;align-items:center;gap:6px;width:140px;height:40px;padding:0 10px;border-radius:10px;background:rgba(0,0,0,.3);border:1px solid rgba(255,255,255,.14)}
+.st-num:focus-within{border-color:#ffd23f}.st-num span{color:var(--mut);font-family:var(--mono)}
+.st-num input{flex:1;min-width:0;background:none;border:0;outline:0;color:#fff;font:700 15px var(--mono)}
+.st-field{display:grid;grid-template-columns:1fr auto auto;gap:10px;align-items:center;padding:10px 0;border-top:1px solid rgba(255,255,255,.07)}
+.st-field b{display:block;font-size:14px}.st-field small{color:var(--mut);font-size:12px}.st-field .in{width:220px}
+.st-draws{display:flex;flex-direction:column;gap:14px}
+.st-lot{border-left:3px solid var(--c);padding-left:12px;display:flex;flex-direction:column;gap:6px}
+.st-hours{display:flex;flex-wrap:wrap;gap:6px}
+.st-hours button{min-width:52px;height:32px;border-radius:8px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.03);color:var(--mut);font:600 12px var(--mono);cursor:pointer}
+.st-hours button.on{background:var(--c);border-color:var(--c);color:#fff;box-shadow:0 0 10px color-mix(in srgb,var(--c) 60%,transparent)}
+.st-q{font-weight:600;font-size:14px}
