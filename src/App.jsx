@@ -144,7 +144,7 @@ function Results({ lots, results, auto, reload, toast }) {
         {rows.length ? <div className="list">
           {rows.map(x => (
             <div key={x.id} className="row">
-              <div className="who"><b>{x.email}</b><small>{kind === 'r' ? 'UTR ' + x.utr : `${x.lot} · ${lbl(+x.h)} · ${x.day} · ${x.code}`} · {x.created_at}</small></div>
+              <div className="who"><b>{x.email}</b><small>{kind === 'r' ? 'UTR ' + x.utr + (x.paid_to ? ' · paid to ' + x.paid_to : '') : `${x.lot} · ${lbl(+x.h)} · ${x.day} · ${x.code}`} · {x.created_at}</small></div>
               <div className="amt">{inr(x.amount)}</div>
               <div className="acts">
                 <button className="btn ok" disabled={busy === x.id} onClick={() => act(x.id, true)}>Approve</button>
@@ -164,7 +164,7 @@ function Results({ lots, results, auto, reload, toast }) {
     const [f, setF] = useState(null), [orig, setOrig] = useState(''), [busy, setBusy] = useState(false), [ask, setAsk] = useState(false)
     const load = () => api('config').then(r => {
       const c = r.config, x = { lots: Object.fromEntries(c.lots.map(l => [l.k, l.h])), price: c.price, win: c.win, win_last2: c.last[0], win_last1: c.last[1],
-        close_min: Math.round(c.close / 60), approval: c.approval, ref_bonus: c.ref_bonus, upi_id: c.upi.id, upi_name: c.upi.name }
+        close_min: Math.round(c.close / 60), approval: c.approval, ref_bonus: c.ref_bonus, upis: (c.upis && c.upis.length ? c.upis : [{ ...c.upi, on: true }]).map(u => ({ id: u.id, name: u.name, on: u.on !== false })) }
       setF(x); setOrig(JSON.stringify(x))
     }, e => toast(e.message, true))
     useEffect(() => { load() }, [])
@@ -172,6 +172,8 @@ function Results({ lots, results, auto, reload, toast }) {
     const set = (k, v) => { setF({ ...f, [k]: v }); setAsk(false) }
     const setArr = (k, i, v) => { const a = [...f[k]]; a[i] = v; set(k, a) }
     const toggleH = (lot, h) => { const hs = f.lots[lot].includes(h) ? f.lots[lot].filter(x => x !== h) : [...f.lots[lot], h].sort((a, b) => a - b); set('lots', { ...f.lots, [lot]: hs }) }
+    const setUpi = (i, v) => set('upis', f.upis.map((u, j) => j === i ? { ...u, ...v } : u))
+    const moveUpi = (i, d) => { const a = [...f.upis]; [a[i], a[i + d]] = [a[i + d], a[i]]; set('upis', a) }
     const changed = JSON.stringify(f) !== orig
     const save = async () => {
       setBusy(true)
@@ -202,9 +204,18 @@ function Results({ lots, results, auto, reload, toast }) {
             <div className="st-field"><div><b>Booking closes</b><small>minutes before each draw</small></div><Num v={f.close_min} on={v => set('close_min', v)} pre="" w={110} /><span className="mut">min</span></div>
             <div className="st-field"><div><b>Owner approval for wins of</b><small>this amount or more wait in Big wins</small></div><Num v={f.approval} on={v => set('approval', v)} w={150} /></div>
             <div className="st-field"><div><b>Referral bonus</b><small>a new player gets this with a friend's code</small></div><Num v={f.ref_bonus} on={v => set('ref_bonus', v)} w={150} /></div>
-            <h3 style={{ marginTop: 22 }}>UPI for recharges</h3>
-            <div className="st-field"><div><b>UPI ID</b><small>players pay recharges to this</small></div><input className="in" value={f.upi_id} onChange={e => set('upi_id', e.target.value.trim())} placeholder="name@okaxis" /></div>
-            <div className="st-field"><div><b>Name shown</b><small>in the player's UPI app</small></div><input className="in" value={f.upi_name} onChange={e => set('upi_name', e.target.value)} /></div>
+            <h3 style={{ marginTop: 22 }}>UPI IDs for recharges</h3>
+            <p className="mut" style={{ margin: '-6px 0 10px' }}>Players choose one of the UPI IDs that are on. Turn one off to stop new payments to it.</p>
+            <div className="upi-list">{f.upis.map((u, i) => (
+              <div key={i} className={'upi-row' + (u.on ? '' : ' off')}>
+                <span className="upi-n">{i + 1}</span>
+                <input className="in" placeholder="name@okaxis" value={u.id} onChange={e => setUpi(i, { id: e.target.value.trim() })} aria-label={'UPI ID ' + (i + 1)} />
+                <input className="in" placeholder="Name shown, e.g. Murugan" value={u.name} onChange={e => setUpi(i, { name: e.target.value })} aria-label={'Name ' + (i + 1)} />
+                <button className={'sw' + (u.on ? ' on' : '')} onClick={() => setUpi(i, { on: !u.on })} aria-label={u.on ? 'Turn off' : 'Turn on'}><i /></button>
+                <button className="btn ghost sm" onClick={() => moveUpi(i, -1)} disabled={!i} aria-label="Move up">↑</button>
+                <button className="btn ghost sm" onClick={() => set('upis', f.upis.filter((_, j) => j !== i))} disabled={f.upis.length < 2} aria-label="Remove">✕</button>
+              </div>))}</div>
+            {f.upis.length < 10 && <button className="btn ghost sm" style={{ marginTop: 10 }} onClick={() => set('upis', [...f.upis, { id: '', name: f.upis[0]?.name || 'Murugan', on: true }])}>+ Add UPI ID</button>}
           </div>
         </div>
 
