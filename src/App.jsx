@@ -13,28 +13,47 @@ const Brand = () => <div className="brand"><span>M</span>Murugan <em>Admin</em><
 
 // ================= sign in (password only) =================
 function Login({ onIn }) {
-    const [pw, setPw] = useState(''), [show, setShow] = useState(false), [busy, setBusy] = useState(false), [err, setErr] = useState('')
-    const go = async e => {
-      e.preventDefault(); setErr(''); setBusy(true)
-      try { const r = await api('admin_login', { password: pw }); setToken(r.token); onIn(r.role) } catch (x) { setErr(x.message); setPw('') }
-      setBusy(false)
-    }
-    return (
-      <div className="login">
-          <form className="card lcard" onSubmit={go}>
-            <Brand />
-            <h2>Owner sign in</h2>
-            <p>Enter the admin password.</p>
-            <div className="pw">
-              <input className="in" type={show ? 'text' : 'password'} autoComplete="current-password" placeholder="Password" value={pw} onChange={e => setPw(e.target.value)} autoFocus />
-              <button type="button" className="eye" onClick={() => setShow(s => !s)} aria-label={show ? 'Hide password' : 'Show password'}>{show ? '🙈' : '👁'}</button>
-            </div>
-            {err && <small className="err">{err}</small>}
-            <button className="btn gold" disabled={busy || !pw}>{busy ? 'Please wait…' : 'Sign in'}</button>
-          </form>
-      </div>
-    )
+  const [pw, setPw] = useState(''), [show, setShow] = useState(false), [busy, setBusy] = useState(false), [err, setErr] = useState(''), [caps, setCaps] = useState(false)
+  const go = async e => {
+    e.preventDefault(); setErr(''); setBusy(true)
+    try { const r = await api('admin_login', { password: pw }); setToken(r.token); onIn(r.role) } catch (x) { setErr(x.message); setPw('') }
+    setBusy(false)
   }
+  const B = import.meta.env.BASE_URL
+  return (
+    <div className="al">
+      <div className="al-glow a" /><div className="al-glow b" />
+      <div className="al-box">
+        {/* left: Murugan artwork */}
+        <div className="al-art">
+          <div className="al-rays" />
+          <img className="al-hero" src={B + 'murugan-hero.webp'} alt="Lord Murugan" />
+          <div className="al-cards">{['dear', 'kerala', 'goa', 'sikkim', 'punjab'].map((n, i) => <img key={n} src={B + 'mg-card-' + n + '.webp'} alt={n} style={{ '--i': i }} />)}</div>
+          <p className="al-quote">Vetrivel Muruganukku Arogara 🙏</p>
+        </div>
+        {/* right: sign in */}
+        <form className="al-form" onSubmit={go}>
+          <span className="al-chip">🔒 Owner area</span>
+          <h1>Welcome back</h1>
+          <p className="al-sub">Sign in to manage results, recharges, wins and withdrawals.</p>
+          <label className={'al-field' + (err ? ' bad' : '')}>
+            <span>Admin password</span>
+            <div>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="10" width="16" height="11" rx="2.5" /><path d="M8 10V7a4 4 0 0 1 8 0v3" /></svg>
+              <input type={show ? 'text' : 'password'} autoComplete="current-password" placeholder="Enter password" value={pw} autoFocus
+                onChange={e => { setPw(e.target.value); setErr('') }} onKeyUp={e => setCaps(e.getModifierState && e.getModifierState('CapsLock'))} />
+              <button type="button" onClick={() => setShow(s => !s)} aria-label={show ? 'Hide password' : 'Show password'}>{show ? 'Hide' : 'Show'}</button>
+            </div>
+          </label>
+          {caps && !err && <small className="al-note">Caps Lock is on</small>}
+          {err && <small className="al-err">{err}</small>}
+          <button className="al-btn" disabled={busy || !pw}>{busy ? <><i className="al-spin" /> Signing in…</> : <>Sign in <b>→</b></>}</button>
+          <div className="al-foot"><span>Murugan Lucky Draw · Admin</span><span>Secure sign-in</span></div>
+        </form>
+      </div>
+    </div>
+  )
+}
 
 const ago = t => { if (!t) return 'never'; const m = Math.round((Date.now() - new Date(t.replace(' ', 'T') + '+05:30')) / 60000); return m < 1 ? 'just now' : m < 60 ? m + ' min ago' : Math.floor(m / 60) + ' h ago' }
 const SITE = { 'www.goaqueen.in': 'goaqueen.in', 'dearlottery.in': 'dearlottery.in', 'www.goodreturns.in': 'goodreturns.in' }
