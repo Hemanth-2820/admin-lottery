@@ -681,7 +681,7 @@ function Recharges({ ov, reload, toast }) {
       <div className="shell">
         <header className="top">
           <Brand />
-          <nav>{tabs.map(([k, l, n]) => <button key={k} className={tab === k ? 'on' : ''} onClick={() => setTab(k)}>{l}{n ? <b>{n}</b> : null}</button>)}</nav>
+          <nav>{tabs.map(([k, l, n]) => <button key={k} className={tab === k ? 'on' : ''} onClick={e => { setTab(k); e.currentTarget.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' }) }}>{l}{n ? <b>{n}</b> : null}</button>)}</nav>
           <button className="btn ghost sm" onClick={out}>Log out</button>
         </header>
         <main>

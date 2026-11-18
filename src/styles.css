@@ -179,3 +179,62 @@ td.mut{color:var(--mut)}
 .rr-num{display:flex;gap:4px}.rr-num i{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;font:800 15px var(--mono);font-style:normal;color:#2a1300;background:radial-gradient(circle at 35% 30%,#fff7c8,#ffd23f 55%,#d08a00)}
 @media (max-width:640px){.rr{grid-template-columns:52px 1fr auto}.rr .tag,.rr .undo-cell{grid-column:2/-1;justify-self:start}}
 
+/* ================= responsive: phones, tablets, laptops, big screens ================= */
+*,*::before,*::after{box-sizing:border-box}
+html,body{max-width:100%;overflow-x:hidden}
+img,svg,canvas{max-width:100%}
+.grid2>*,.st-grid>*,.rp-grid>*,.bw-main>*,main>*{min-width:0}
+.card{min-width:0}
+/* wide tables scroll inside their card instead of stretching the page */
+.tscroll,.st-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+
+/* tablets and small laptops */
+@media (max-width:1100px){
+  .top{gap:10px}
+  .top nav button{padding:0 11px;font-size:14px}
+}
+/* tablets: menu moves to its own full-width row that scrolls sideways */
+@media (max-width:900px){
+  .top{display:grid;grid-template-columns:1fr auto;row-gap:10px;padding-top:10px;padding-bottom:8px}
+  .top nav{grid-column:1/-1;grid-row:2;margin:0 -16px;padding:0 16px 2px;scrollbar-width:none;scroll-snap-type:x proximity}
+  .top nav::-webkit-scrollbar{display:none}
+  .top nav button{scroll-snap-align:start;flex:none;height:36px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.03)}
+  .top nav button.on{border-color:rgba(255,210,63,.45)}
+  .grid2,.st-grid,.rp-grid{grid-template-columns:minmax(0,1fr)!important}
+  main{padding-top:14px}
+}
+/* phones */
+@media (max-width:600px){
+  main{padding-left:12px;padding-right:12px}
+  .card{padding:14px!important;border-radius:16px}
+  .rp-head{flex-direction:column;align-items:stretch!important;gap:10px}
+  .rp-head h2{font-size:22px}
+  .rp-head .row-r{flex-wrap:wrap;justify-content:flex-start}
+  .hd{flex-wrap:wrap;gap:8px}
+  .slots{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+  .rr-lots,.rr-days{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;margin-left:-14px;margin-right:-14px;padding:0 14px 2px}
+  .rr-lots::-webkit-scrollbar,.rr-days::-webkit-scrollbar{display:none}
+  .rr-lots button,.rr-days button{flex:none}
+  /* every table scrolls sideways inside its card */
+  .rp-table,.pl-table,.st-table{display:block;overflow-x:auto;white-space:nowrap;-webkit-overflow-scrolling:touch}
+  .st-table td small{white-space:normal}
+  .st-table .in,.st-table input{min-width:90px}
+  .st-field{flex-wrap:wrap;gap:8px}
+  .st-field>div:first-child{flex:1 1 100%}
+  .st-field .in{max-width:100%!important;flex:1}
+  .bw-acts,.wd-acts{flex-wrap:wrap}
+  .bw-acts .btn,.wd-acts .btn{flex:1 1 auto}
+  .btn{min-height:42px}
+  .toast{left:12px!important;right:12px!important;transform:none!important;max-width:none!important}
+}
+/* very small phones */
+@media (max-width:380px){
+  .brand{font-size:16px}
+  .slots{grid-template-columns:minmax(0,1fr)!important}
+}
+/* big screens: use the space */
+@media (min-width:1600px){
+  main{max-width:1440px}
+}
+
+
