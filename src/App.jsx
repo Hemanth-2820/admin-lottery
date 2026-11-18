@@ -203,10 +203,12 @@ function Results({ lots, results, auto, reload, toast }) {
   const Num = ({ v, on, pre = '₹', w }) => <label className="st-num" style={w ? { width: w } : null}>{pre && <span>{pre}</span>}<input type="number" inputMode="numeric" value={v} onChange={e => on(e.target.value === '' ? '' : +e.target.value)} /></label>
   const HOURS = Array.from({ length: 18 }, (_, i) => i + 6)   // 6 AM .. 11 PM
   function Settings({ toast }) {
-    const [f, setF] = useState(null), [orig, setOrig] = useState(''), [busy, setBusy] = useState(false), [ask, setAsk] = useState(false)
+    const [f, setF] = useState(null), [orig, setOrig] = useState(''), [busy, setBusy] = useState(false), [ask, setAsk] = useState(false), [sendingTest, setSendingTest] = useState(false)
     const load = () => api('config').then(r => {
       const c = r.config, x = { lots: Object.fromEntries(c.lots.map(l => [l.k, l.h])), price: c.price, win: c.win, win_last2: c.last[0], win_last1: c.last[1],
-        close_min: Math.round(c.close / 60), approval: c.approval, ref_bonus: c.ref_bonus, upis: (c.upis && c.upis.length ? c.upis : [{ ...c.upi, on: true }]).map(u => ({ id: u.id, name: u.name, on: u.on !== false, qr: u.qr || '' })) }
+        close_min: Math.round(c.close / 60), approval: c.approval, ref_bonus: c.ref_bonus,
+        alert_email: c.alert_email || '', win_mail_min: c.win_mail_min || 0,
+        upis: (c.upis && c.upis.length ? c.upis : [{ ...c.upi, on: true }]).map(u => ({ id: u.id, name: u.name, on: u.on !== false, qr: u.qr || '' })) }
       setF(x); setOrig(JSON.stringify(x))
     }, e => toast(e.message, true))
     useEffect(() => { load() }, [])
@@ -221,6 +223,17 @@ function Results({ lots, results, auto, reload, toast }) {
       setBusy(true)
       try { await api('admin_settings', { config: f }); toast('Saved. Players see the new settings next time they open the app.'); setAsk(false); await load() } catch (e) { toast(e.message, true) }
       setBusy(false)
+    }
+    const sendTest = async () => {
+      setSendingTest(true)
+      try {
+        const r = await api('admin_mail', { test: true })
+        toast(`Test email sent to ${r.to} ✅ Check inbox and spam.`)
+      } catch (e) {
+        toast(e.message, true)
+      } finally {
+        setSendingTest(false)
+      }
     }
     const rows = [['Single', 'one position: A, B or C'], ['Double', 'two positions: AB, AC or BC'], ['Triple', 'all three: ABC']]
     return (
@@ -259,6 +272,24 @@ function Results({ lots, results, auto, reload, toast }) {
                 <UpiQr u={u} onQr={qr => setUpi(i, { qr })} toast={toast} />
               </div>))}</div>
             {f.upis.length < 10 && <button className="btn ghost sm" style={{ marginTop: 10 }} onClick={() => set('upis', [...f.upis, { id: '', name: f.upis[0]?.name || 'Murugan', on: true, qr: '' }])}>+ Add UPI ID</button>}
+          </div>
+
+          <div className="card">
+            <h3>Emails</h3>
+            <p className="mut" style={{ margin: '-6px 0 14px' }}>Where owner alerts are sent, and which player wins trigger an email.</p>
+            <div className="st-field">
+              <div><b>Alert emails to</b><small>owner gets alerts for recharges, withdrawals, big wins and new players</small></div>
+              <input className="in" style={{ maxWidth: 260 }} type="email" placeholder="owner@example.com" value={f.alert_email} onChange={e => set('alert_email', e.target.value.trim())} aria-label="Alert emails to" />
+            </div>
+            <div className="st-field">
+              <div><b>Email players about wins of</b><small>0 means every win. Set e.g. 500 if there are too many emails</small></div>
+              <Num v={f.win_mail_min} on={v => set('win_mail_min', v)} w={150} />
+            </div>
+            <div style={{ marginTop: 16 }}>
+              <button className="btn ghost sm" disabled={sendingTest || !f.alert_email} onClick={sendTest}>
+                {sendingTest ? 'Sending test email…' : '✉️ Send test email'}
+              </button>
+            </div>
           </div>
         </div>
 
